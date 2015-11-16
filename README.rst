@@ -3,21 +3,21 @@ ANSITERM-FLASHCARD Specification
 
 Definitions
 -----------
-These definitions can be skipped on first reading. I find that keeping
+These definitions may be skipped on first reading. I find that keeping
 a dictionary of terms guards against introducing synonyms in the
 prose. Having more than one name for any concept is confusing.
 
 Game
   Flash card sessions are not usually called games, but what
-  definition of 'game' would include Solitaire and exclude flash cards?
+  definition of game would include Solitaire and exclude flash cards?
 
 Player
-  the user of our game during the course of play.
+  The palyer is user of our game during the course of play.
 
 Dealer
   The agent that does all card operations on behalf of the
   player. In a physical game, the player would also act as his own
-  dealer. But separating the actions makes the role that the computer
+  dealer. But separating these entities makes the role that the computer
   plays clearer.
 
 Card
@@ -41,34 +41,36 @@ Decks
 
 Dealt Deck
   The currently dealt card. It may appear as answer-up or
-  answer down. This deck never has more than one card, but it may be
+  answer-down. This deck never has more than one card, but it may be
   empty. Note that I usually say the "the dealt card" rather than "the
   top card of the dealt deck." The later is not wrong, but it is
   misleading, as there is no other card in the deck.
 
 Trash Deck
-  Cards that have been learned are tossed in the trash. The
-  trash cards are never used again during the course of play. They are
-  of no use to the program, but an explicit trash deck makes stating the game
-  invariant easier. The trash deck is represented as a set.
+  Cards that have been learned are tossed in the trash. The trash
+  cards are never used again during the course of play. They are of no
+  use to the player or program, but an explicit trash deck makes
+  stating the game invariant easier. The trash deck is represented as
+  a set.
 
 Play Deck
-  The source of cards to learn. Initially the entire card set
-  appears in the play deck. Each deal operation moves the top card to
-  the dealt deck. The shuffle operation moves all the cards from the
-  kept deck to the top of the play deck. The play deck is a list of
-  cards. There is no defined ordering relation on cards.
+  The play deck is the source of cards to learn. Initially, the entire
+  card set appears in the play deck. Each deal operation moves the top
+  card to the dealt deck. The shuffle operation moves all the cards
+  from the kept deck to the top of the play deck. The play deck is is
+  represented as a list of cards. There is no defined ordering
+  relation on cards.
 
 Kept Deck
   Cards that have been played, but not declared learned are
-  saveed to the kept deck. Kept card are put back in play by the shuffle
+  saved to the kept deck. Kept card are put back in play by the shuffle
   operation. The kept deck is a sequence with the most recent cards
   going to the end. The arrangement allows me to prevent recently seen
   cards from being immediately dealt again after a shuffle.
 
 (Game) State
-  The four decks: (dealt, play, kept and trash) plus the
-  card set comprise the state. The card set never changes in any game
+  The four decks: dealt, play, kept and trash, plus the card set
+  comprise the game state. The card set never changes in any game
   play. The obvious optimization is to leave the card set out of the
   state, but I need it to specify the game invariant.
 
@@ -77,10 +79,11 @@ Start State
   in the the play deck. This is the result of the init operation.
 
 Operation
-  An operation changes the game state. Formally, the operation
-  is a triple (before-state, operation-name, after-state). The set of
-  operations are predefined and unchanging. We often refer to the
-  operation by its name. We can also talk about the operation-triple.
+  An operation changes the game state. Formally, the operation is a
+  triple (before-state, operation-name, after-state). The set of
+  operations are predefined and unchanging. I often refer to the
+  operation by its name, natually, but I can also talk about the
+  operation-triple.
 
 Init (Operation)
   Establishes the start state.
@@ -113,21 +116,21 @@ Informally, the player does the following::
 
     start game with a card set
     while there are more unlearned cards:
-        see question on the dealt card
+        deal a card, question-side up
+        read question on the dealt card
         say answer out loud
-        flip card
+        flip the card to reveal the correct answer
         self-score answer
 
 There are two parts of the design to consider:
 
 * The game state and operations on the state
-* The user interface
+* The player's interactions with the user interface
 
 I start with the first.
 
 State Operations
 ----------------
-
 The state is a five-tuple (card-set, dealt, play, kept, trash). The
 card-set, dealt deck and trash are sets of cards as the sequence of
 the cards do not matter.
@@ -148,17 +151,21 @@ answer). These two fields identify the card by value.
 
 A system invariant is card set is equal to the union of the four decks
 (assuming that answer-up flag in ignored when comparing cards.) Keep
-this invariant in mind, and we need not again refer the card-set.
+this invariant in mind, and I need not again refer the card-set.
 
-My ad hoc specification language is a hybrid of something like Z/TLA+
-and Python. The prime designates the after state of a variable. For
-example, x' = x, means that x was not changed. (y == 0, y' == y + 1,
-y' == 1) is true. Remember that each line is a predicate and the lines
-a joined by conjunction. Python expressions are used only if they have
-no side-effects. The assignment statement is forbidden.
+My ad hoc specification language is a hybrid of something like Z or
+TLA+, and Python. The prime designates the after state of a
+variable. For example, x' = x, means that x was not changed. (y == 0,
+y' == y + 1, y' == 1) is true. Remember that each line is a predicate
+and the lines a joined by conjunction. Python expressions are used
+only if they have no side-effects. The assignment statement is
+forbidden.
 
 Init
 ----
+Init has no precondition, as evidenced by the lack of unprimed
+variables. The Init operation establishes start state and the game
+invariant.
 
 ::
 
@@ -169,6 +176,8 @@ Init
 
 GameOver
 --------
+As no primes appear here, GameOver is a just condition and not a full
+operation.
 
 ::
 
@@ -179,6 +188,8 @@ GameOver
 
 Deal
 ----
+Take the top card of the play deck, and show the answer side to the
+player.
 
 ::
 
@@ -192,9 +203,9 @@ Deal
 
 Flip
 ----
-Only the dealt card changes its state from answer-up == true to
-answer-up == false. The identity of the dealt card remains the same. The
-number of dealt card remains 1. The other stacks are not changed.
+Only the dealt card changes its state from answer-up == True to
+answer-up == False. The identity of the dealt card remains the same. The
+number of dealt cards remains 1. The other decks are not changed.
 
 ::
 
@@ -206,6 +217,7 @@ number of dealt card remains 1. The other stacks are not changed.
 
 Keep
 ----
+Move the unlearned card to the end of the kept deck. 
 
 ::
 
@@ -217,6 +229,7 @@ Keep
 
 Toss
 ----
+Move the learned card to the trash deck. 
 
 ::
 
@@ -228,6 +241,10 @@ Toss
 
 Shuffle
 -------
+Split the kept deck into two equal halves. The bottom half will have
+the most recently seen cards. Shuffle each half independently. Place
+the top half back on top of the bottom half. Move this shuffled deck
+to the top of the play deck.
 
 ::
 
@@ -237,11 +254,7 @@ Shuffle
     kept' == []
     trash' == trash
 
-The function rand() is what performs the actual shuffle. I could
-assume that it is a built-in operation that I need not specify. But
-there are a couple of problems. The shuffle should not be purely
-random. It should place recently seen cards at the end of the shuffled
-sequence.
+The function rand() is what performs the actual shuffle.
 
 ::
 
@@ -252,10 +265,11 @@ more of a challenge.
 
 History
 -------
-During any game, we can trace the sequence of successive of games
-states. This history is subject to certain ordering constraints. We
-must always begin a trace/history with 'init'. I may wish to annotate
-each state with the operation that produced it.
+During any game, I can trace the sequence of successive of games
+states. This history is subject to certain ordering constraints. The
+history must always begin a trace/history with the result of the init
+operation. I may wish to annotate each state with the operation that
+produced it.
 
 ::
 
@@ -301,7 +315,7 @@ each state with the operation that produced it.
      {('2*3','6'), ('2+2','4')})    # trash-set
     -- game-over --
 
-A simple program can read any such history and tell us if it is
+A simple program can read any such history and tell me if it is
 complete (lively) and correct (safety).
 
 In this first version, a shuffle occurs only when play deck is
@@ -309,11 +323,12 @@ empty. Later versions may allow the player to request a shuffle.
 
 Interface
 ---------
-The player press a couple of keys (enter,delete). On the screen, he
-can view one side the dealt card. The physical interface is very
-simple. The main challange to make sure that player can only generate
-correct state histories. I use a CSP specification. A game is a
-concurrent program.
+The player can press only a couple of keys (enter, delete). Any other
+key presses are ignored. On the screen, he can view one side the dealt
+card. The physical interface is very simple. The state operations have
+already been specified. The main challenge now is to make sure that
+player can only generate correct state histories. I use a CSP
+specification. A game is described as a concurrent program.
 
 ::
 
@@ -340,13 +355,13 @@ it. The same for answer.
 
 The player can 'decide' his answer, but that is a private matter that is
 not shared. Since it just happens in the player's mind, it does not result
-in any system action either.
+in any system action.
 
 The player can press a key. Only the enter and delete key events are
 shared with the keyboard. So any key other than enter and delete are
 accepted by the keyboard, but ignored by the player process. Note that
-after 'decide' the delete would deadlock if I did not skip it like I
-do in definition A.
+after 'decide', the delete would deadlock if the process did not skip
+it like seen in definition A.
 
 Only the player shares the keyboard's alphabet. I can group these
 processes, and hide the keyboard alphabet from the rest of the
@@ -369,7 +384,7 @@ system::
     ==
     PLAYER'
 
-I can also hide the private 'decide' event and get
+I can also hide the private decide event and get
 
 ::
 
@@ -384,11 +399,11 @@ Start-Up
 The description of SCREEN is abstract. I have said nothing about the
 actual I/O needed to display data. This was deliberate (despite the
 project name) as I want the high-level specification to describe a
-whole family of possible implementations (html, curses, Tk). But by
+whole family of possible implementations (HTML, Curses, Tk). But by
 not committing to a particular technology, it is hard to say what
 operations are needed and how to represent them by abstractions. I am
 going to assume that screen devices need some opening ceremony and
-closing ceremony. I know curses does. If some technology does not
+closing ceremony. I know Curses does. If some technology does not
 require initialization, the open may be seen as a no-op.
 
 ::
@@ -414,15 +429,15 @@ PLAYER).
     DEALER0 = name-cardset?name -> (start -> DEALER)
     DEALER = show-q -> (show-a -> (score-yes -> DEALER | score-no -> DEALER))
 
-The player does not need a 'start' event as synchronization is already
+The player does not need a start event as synchronization is already
 implied by 'name-cardset'.
 
 Termination
 -----------
 Once all of the card set is in the trash deck, there is nothing more
-to do. We need to clean-up and quit.
+to do. The program needs to clean-up and quit.
 
-How to specify the 'learned' condition?  One option is to add state
+How to specify this 'learned' condition?  One option is to add state
 and conditional logic to the process definitions. I do that
 below. Another option is just to assert the the learned event can
 arise somehow, and then deal with it.
