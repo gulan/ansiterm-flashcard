@@ -1,5 +1,5 @@
-Specification
-=============
+ANSITERM-FLASHCARD Specification
+================================
 
 Definitions
 -----------
@@ -192,7 +192,7 @@ Deal
 
 Flip
 ----
-Only the dealt card changes it state from answer-up == true to
+Only the dealt card changes its state from answer-up == true to
 answer-up == false. The identity of the dealt card remains the same. The
 number of dealt card remains 1. The other stacks are not changed.
 
@@ -318,16 +318,22 @@ concurrent program.
 ::
 
     GAME = KEYBOARD || PLAYER || DEALER || SCREEN
+
+    PLAYER = view-q -> (decide -> A)
+      where
+        A = enter -> B || delete -> A
+        B = view-a -> (enter -> (score-no -> PLAYER) | delete -> (score-yes -> PLAYER))
+
+    KEYBOARD = (enter -> KEYBOARD) | (delete -> KEYBOARD) | (_ -> KEYBOARD)
+
+    DEALER = show-q -> (show-a -> (score-yes -> DEALER | score-no -> DEALER))
+
+    SCREEN = (show-q -> (view-q -> SCREEN)) | (show-a -> (view-a -> SCREEN))
+
     alphabet(PLAYER) = {view-q decide view-a enter score-yes delete score-no}
     alphabet(KEYBOARD) = {enter delete}
     alphabet(SCREEN) = {show-q view-q show-a view-a}
     alphabet(DEALER) = {show-q show-a score-yes score-no}
-    PLAYER = view-q -> (decide -> A)
-    A = enter -> B || delete -> A
-    B = view-a -> (enter -> (score-no -> PLAYER) | delete -> (score-yes -> PLAYER))
-    KEYBOARD = (enter -> KEYBOARD) | (delete -> KEYBOARD) | (_ -> KEYBOARD)
-    DEALER = show-q -> (show-a -> (score-yes -> DEALER | score-no -> DEALER))
-    SCREEN = (show-q -> (view-q -> SCREEN)) | (show-a -> (view-a -> SCREEN))
 
 The player can view the question, but only if the screen is showing
 it. The same for answer.
@@ -338,13 +344,99 @@ in any system action either.
 
 The player can press a key. Only the enter and delete key events are
 shared with the keyboard. So any key other than enter and delete are
-accepted by the keyboard, but ignore by the player process. Note that
+accepted by the keyboard, but ignored by the player process. Note that
 after 'decide' the delete would deadlock if I did not skip it like I
 do in definition A.
 
-[I want a simple tool to check form deadlocks.]
+Only the player shares the keyboard's alphabet. I can group these
+processes, and hide the keyboard alphabet from the rest of the
+system::
 
-[I need to add termination.]
+    PLAYER  
+    == 
+    view-q -> (decide -> A) 
+    A = enter -> B || delete -> A
+    B = view-a -> (enter -> (score-no -> PLAYER) | delete -> (score-yes -> PLAYER))
+    ==
+    view-q -> (decide -> A)
+    A = enter -> B || delete -> A
+    B = view-a -> (score-no -> PLAYER) | score-yes -> PLAYER)
+    ==  // {enter, delete}
+    view-q -> (decide -> B)
+    B = view-a -> (score-no -> PLAYER) | score-yes -> PLAYER)
+    ==
+    view-q -> (decide -> (view-a -> (score-no -> PLAYER) | score-yes -> PLAYER)))
+    ==
+    PLAYER'
+
+I can also hide the private 'decide' event and get
+
+::
+
+    PLAYER' = view-q -> (view-a -> (score-no -> PLAYER') | score-yes -> PLAYER'))
+    
+    GAME = (KEYBOARD || PLAYER) // {enter delete decide} || DEALER || SCREEN
+
+[I want a simple tool to check for deadlocks.]
+
+Start-Up
+--------
+The description of SCREEN is abstract. I have said nothing about the
+actual I/O needed to display data. This was deliberate (despite the
+project name) as I want the high-level specification to describe a
+whole family of possible implementations (html, curses, Tk). But by
+not committing to a particular technology, it is hard to say what
+operations are needed and how to represent them by abstractions. I am
+going to assume that screen devices need some opening ceremony and
+closing ceremony. I know curses does. If some technology does not
+require initialization, the open may be seen as a no-op.
+
+::
+
+    SCREEN = open-screen -> (start -> SCREEN-LOOP)
+    SCREEN-LOOP = (show-q -> (view-q -> SCREEN-LOOP)) | (show-a -> (view-a -> SCREEN-LOOP))
+
+The open-screen event is private to screen. It must be completed
+before the screen service loop is running. The 'start' event provides
+synchronization for the other processes.
+
+To start a game, the player needs to provide a card set (name). The
+dealer needs to shuffle those cards and designate them as the play
+deck. After these start-up operations are complete, the game may
+proceed as already specified. (PLAYER' is the hidden-keyboard view of
+PLAYER).
+
+::
+
+    PLAYER0 = name-cardset!name -> PLAYER'
+    PLAYER' = view-q -> (view-a -> (score-no -> PLAYER') | score-yes -> PLAYER'))
+
+    DEALER0 = name-cardset?name -> (start -> DEALER)
+    DEALER = show-q -> (show-a -> (score-yes -> DEALER | score-no -> DEALER))
+
+The player does not need a 'start' event as synchronization is already
+implied by 'name-cardset'.
+
+Termination
+-----------
+Once all of the card set is in the trash deck, there is nothing more
+to do. We need to clean-up and quit.
+
+How to specify the 'learned' condition?  One option is to add state
+and conditional logic to the process definitions. I do that
+below. Another option is just to assert the the learned event can
+arise somehow, and then deal with it.
+
+::
+
+    DEALER = (show-q -> (show-a -> (score-yes -> DEALER | score-no -> DEALER))) | (learned -> SKIP)
+    SCREEN-LOOP = (show-q -> (view-q -> SCREEN-LOOP)) | (show-a -> (view-a -> SCREEN-LOOP) | (learned -> SKIP)
+    PLAYER' = (view-q -> (view-a -> (score-no -> PLAYER') | score-yes -> PLAYER'))) | (learned -> SKIP)
+
+SKIP is CSP's way of expression graceful termination. Without it our
+finished processes would just hang forever waiting for more events
+that will never come.
 
 Attaching Operations
 --------------------
+[TBD]
