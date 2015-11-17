@@ -454,4 +454,23 @@ that will never come.
 
 Attaching Operations
 --------------------
-[TBD]
+
+::
+   
+    alphabet(PLAYER) = {name-cardset view-q view-a score-yes score-no learned}
+    PLAYER = name-cardset!name -> PLAYER-LOOP
+    PLAYER-LOOP = view-q -> view-a -> (score-no -> PLAYER-LOOP | score-yes -> PLAYER-LOOP)  |  learned -> SKIP
+    
+    alphabet(DEALER) = {name-cardset start show-q show-a score-yes score-no learned}
+    DEALER = name-cardset?name -> start -> DEALER-LOOP
+    DEALER-LOOP = show-q -> show-a -> (score-yes -> DEALER-LOOP | score-no -> DEALER-LOOP)  |  learned -> SKIP
+    
+    alphabet(SCREEN) = {open-screen start show-q view-q show-a view-a learned close-screen}
+    SCREEN = open-screen -> start -> SCREEN-LOOP
+    SCREEN-LOOP = (show-q -> (view-q -> SCREEN-LOOP)) | (show-a -> (view-a -> SCREEN-LOOP) | (close-screen -> (learned -> SKIP))
+
+Implementation
+--------------
+I specified the game as a concurrent program of several processes. But
+the specification is only a description of how the program should
+behave. It does not demand a concurrent implementation.
