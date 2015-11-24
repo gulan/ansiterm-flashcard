@@ -12,7 +12,7 @@ Game
   definition of game would include Solitaire and exclude flash cards?
 
 Player
-  The palyer is user of our game during the course of play.
+  The player is user of our game during the course of play.
 
 Dealer
   The agent that does all card operations on behalf of the
@@ -157,7 +157,7 @@ My ad hoc specification language is a hybrid of something like Z or
 TLA+, and Python. The prime designates the after state of a
 variable. For example, x' = x, means that x was not changed. (y == 0,
 y' == y + 1, y' == 1) is true. Remember that each line is a predicate
-and the lines a joined by conjunction. Python expressions are used
+and the lines are joined by conjunctions. Python expressions are used
 only if they have no side-effects. The assignment statement is
 forbidden.
 
@@ -384,7 +384,7 @@ system::
     ==
     PLAYER'
 
-I can also hide the private decide event and get
+I can also hide the private decide event, resulting in
 
 ::
 
@@ -398,7 +398,7 @@ Start-Up
 --------
 The description of SCREEN is abstract. I have said nothing about the
 actual I/O needed to display data. This was deliberate (despite the
-project name) as I want the high-level specification to describe a
+project's name) as I want the high-level specification to describe a
 whole family of possible implementations (HTML, Curses, Tk). But by
 not committing to a particular technology, it is hard to say what
 operations are needed and how to represent them by abstractions. I am
@@ -409,7 +409,8 @@ require initialization, the open may be seen as a no-op.
 ::
 
     SCREEN = open-screen -> (start -> SCREEN-LOOP)
-    SCREEN-LOOP = (show-q -> (view-q -> SCREEN-LOOP)) | (show-a -> (view-a -> SCREEN-LOOP))
+    SCREEN-LOOP =   (show-q -> (view-q -> SCREEN-LOOP))
+                  | (show-a -> (view-a -> SCREEN-LOOP))
 
 The open-screen event is private to screen. It must be completed
 before the screen service loop is running. The 'start' event provides
@@ -418,16 +419,18 @@ synchronization for the other processes.
 To start a game, the player needs to provide a card set (name). The
 dealer needs to shuffle those cards and designate them as the play
 deck. After these start-up operations are complete, the game may
-proceed as already specified. (PLAYER' is the hidden-keyboard view of
-PLAYER).
+proceed as already specified. (PLAYER' is the view of PLAYER with
+keyboard events hidden).
 
 ::
 
     PLAYER0 = name-cardset!name -> PLAYER'
-    PLAYER' = view-q -> (view-a -> (score-no -> PLAYER') | score-yes -> PLAYER'))
+    PLAYER' = view-q -> (view-a ->  (score-no -> PLAYER')
+                                   | score-yes -> PLAYER'))
 
     DEALER0 = name-cardset?name -> (start -> DEALER)
-    DEALER = show-q -> (show-a -> (score-yes -> DEALER | score-no -> DEALER))
+    DEALER = show-q -> (show-a ->  (score-yes -> DEALER
+                                  | score-no -> DEALER))
 
 The player does not need a start event as synchronization is already
 implied by 'name-cardset'.
@@ -444,9 +447,17 @@ arise somehow, and then deal with it.
 
 ::
 
-    DEALER = (show-q -> (show-a -> (score-yes -> DEALER | score-no -> DEALER))) | (learned -> SKIP)
-    SCREEN-LOOP = (show-q -> (view-q -> SCREEN-LOOP)) | (show-a -> (view-a -> SCREEN-LOOP) | (learned -> SKIP)
-    PLAYER' = (view-q -> (view-a -> (score-no -> PLAYER') | score-yes -> PLAYER'))) | (learned -> SKIP)
+    DEALER =  (show-q -> show-a -> (score-yes -> DEALER
+                                  | score-no -> DEALER)
+            | (learned -> SKIP))
+
+    SCREEN-LOOP =  (show-q -> view-q -> SCREEN-LOOP)
+                 | (show-a -> view-a -> SCREEN-LOOP)
+                 | (learned -> SKIP)
+
+    PLAYER' = (view-q -> view-a ->  (score-no -> PLAYER')
+                                  | (score-yes -> PLAYER'))
+             | (learned -> SKIP)
 
 SKIP is CSP's way of expression graceful termination. Without it our
 finished processes would just hang forever waiting for more events
@@ -457,20 +468,30 @@ Attaching Operations
 
 ::
    
-    alphabet(PLAYER) = {name-cardset view-q view-a score-yes score-no learned}
+    alphabet(PLAYER) = {name-cardset view-q view-a 
+                        score-yes score-no learned}
     PLAYER = name-cardset!name -> PLAYER-LOOP
-    PLAYER-LOOP = view-q -> view-a -> (score-no -> PLAYER-LOOP | score-yes -> PLAYER-LOOP)  |  learned -> SKIP
+    PLAYER-LOOP =  view-q -> view-a -> (score-no -> PLAYER-LOOP
+                                      | score-yes -> PLAYER-LOOP)
+                 | learned -> SKIP
     
-    alphabet(DEALER) = {name-cardset start show-q show-a score-yes score-no learned}
+    alphabet(DEALER) = {name-cardset start show-q show-a 
+                        score-yes score-no learned}
     DEALER = name-cardset?name -> start -> DEALER-LOOP
-    DEALER-LOOP = show-q -> show-a -> (score-yes -> DEALER-LOOP | score-no -> DEALER-LOOP)  |  learned -> SKIP
+    DEALER-LOOP =  show-q -> show-a -> (score-yes -> DEALER-LOOP
+                                      | score-no -> DEALER-LOOP)
+                 | learned -> SKIP
     
-    alphabet(SCREEN) = {open-screen start show-q view-q show-a view-a learned close-screen}
+    alphabet(SCREEN) = {open-screen start show-q view-q 
+                        show-a view-a learned close-screen}
     SCREEN = open-screen -> start -> SCREEN-LOOP
-    SCREEN-LOOP = (show-q -> (view-q -> SCREEN-LOOP)) | (show-a -> (view-a -> SCREEN-LOOP) | (close-screen -> (learned -> SKIP))
+    SCREEN-LOOP =  show-q -> view-q -> SCREEN-LOOP
+                 | show-a -> view-a -> SCREEN-LOOP
+                 | close-screen -> learned -> SKIP
 
 Implementation
 --------------
 I specified the game as a concurrent program of several processes. But
 the specification is only a description of how the program should
-behave. It does not demand a concurrent implementation.
+behave. It does not demand the implementation also be concurrent.
+
