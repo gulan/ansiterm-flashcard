@@ -13,6 +13,12 @@ class Boom(Exception):
     # Hoare had broken machines returning 'BLEEP'
     pass
 
+def sandbox(f, *a):
+    try:
+        return (True, f(*a))
+    except Boom:
+        return False
+
 def STOP(event):
     """STOP is a broken machine. If we try to engage it, it will go
     'Boom!'"""
@@ -24,6 +30,9 @@ def simple(event):
         return STOP
     else:
         raise Boom()
+
+assert sandbox(simple, 'coin')
+assert not sandbox(simple, 'slug')
 
 def prefix(c, P):
     """'Simple' is a manually constructed machine. We can use higher
@@ -138,9 +147,9 @@ assert vmct('coin')('toffee') == vmct
 def intersect(P, Q):
     return lambda z: intersect(P(z), Q(z))
 
-intersect(grcust, vmct)('coin')('choc')
-intersect(grcust, vmct)('coin')('choc')('coin')('choc')
-# intersect(grcust, vmct)('toffee')
+assert intersect(grcust, vmct)('coin')('choc')
+assert intersect(grcust, vmct)('coin')('choc')('coin')('choc')
+# ? assert not sandbox(intersect(grcust, vmct)('toffee'))
 # intersect(grcust, vmct)('coin')('toffee')
 
 def concurrent(P, A, Q, B):
@@ -195,4 +204,34 @@ assert is_trace(vms, ['coin'])
 assert is_trace(vms, ['coin','choc'])
 assert is_trace(vms, ['coin','choc','coin','choc'])
 assert not is_trace(vms, ['choc'])
+
+def SKIP(x):
+    if x == '_':
+        pass
+    else:
+        raise Boom()
+
+player_loop_a = ['view-q', 'view-a', 'learned', 'score-yes', 'score-no']
+def player_loop(x):
+    return choice2('view-q', prefix('view-a', choice2('score-yes', player_loop,
+                                                      'score-no', player_loop)),
+                   'learned', SKIP) (x)
+
+assert is_trace(player_loop, ['learned'])
+assert is_trace(player_loop, ['view-q', 'view-a', 'score-yes', 'learned'])
+assert is_trace(player_loop, ['view-q', 'view-a', 'score-no',
+                              'view-q', 'view-a', 'score-yes',
+                              'learned'])
+
+dealer_loop_a = ['show-q', 'show-a', 'learned', 'score-yes', 'score-no']
+def dealer_loop(x):
+    return choice2('show-q', prefix('show-a', choice2('score-yes', dealer_loop,
+                                                      'score-no', dealer_loop)),
+                   'learned', SKIP) (x)
+
+assert is_trace(dealer_loop, ['learned'])
+assert is_trace(dealer_loop, ['show-q', 'show-a', 'score-yes', 'learned'])
+assert is_trace(dealer_loop, ['show-q', 'show-a', 'score-no',
+                              'show-q', 'show-a', 'score-yes',
+                              'learned'])
 
