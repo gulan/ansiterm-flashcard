@@ -4,11 +4,6 @@
 Communicating Sequential Processes (CSP)
 """
 
-def nil(m): return m == []
-def car(m): return m[0]
-def cdr(m): return m[1:]
-def cons(h,t): return [h] + t
-
 class Boom(Exception):
     # Hoare had broken machines returning 'BLEEP'
     pass
@@ -35,7 +30,9 @@ assert sandbox(simple, 'coin')
 assert not sandbox(simple, 'slug')
 
 def prefix(c, P):
-    """'Simple' is a manually constructed machine. We can use higher
+    """
+    (c -> P)
+    Simple() is a manually constructed machine. We can use higher
     order functions to manufacture machines."""
     def machine(event):
         if event == c:
@@ -47,13 +44,13 @@ def prefix(c, P):
 simple2 = prefix('coin', STOP) # same as simple
 
 def choice2(c, P, d, Q):
+    """ (c -> P | d -> Q) """
     def machine(event):
         if event == c:
             return P
-        elif event == d:
+        if event == d:
             return Q
-        else:
-            raise Boom()
+        raise Boom()
     return machine
 
 c = choice2('coin', STOP, 'card', STOP)
@@ -61,15 +58,15 @@ assert c('coin') == STOP
 assert c('card') == STOP
 
 def choice3(c, P, d, Q, e, R):
+    """ (c -> P | d -> Q | e -> R) """
     def machine(event):
         if event == c:
             return P
-        elif event == d:
+        if event == d:
             return Q
-        elif event == e:
+        if event == e:
             return R
-        else:
-            raise Boom()
+        raise Boom()
     return machine
 
 def take_only(event):
@@ -79,16 +76,17 @@ def take_only(event):
         return take_only
     else:
         raise Boom()
-
 assert take_only == take_only('coin') == take_only('coin')('coin')
 
 def RUN(event):
-    """A runaway process."""
+    """A run-away process. RUN is like STOP in that it describes a
+    bug. It is not a construct that we would use on purpose."""
     return RUN
 assert RUN == RUN('a') == RUN('b') == RUN('a')('c')
 
 def vms(x):
-    # Version 1: explict construction
+    # Vending Machine
+    # First version: explicit construction.
     def vms1(y):
         if y == 'choc':
             return vms
@@ -102,7 +100,7 @@ assert vms == vms('coin')('choc')('coin')('choc')
 
 del vms
 def vms(x):
-    # Version 2: substitute prefix application for vms1.
+    # Second version: substitute prefix() application for vms1().
     if x == 'coin':
         return prefix('choc', vms)
     else:
@@ -111,12 +109,13 @@ assert vms == vms('coin')('choc')('coin')('choc')
 
 del vms
 def vms(x):
-    # Version 3.
-    return prefix('coin', prefix('choc', vms))(x)
-
+    # Final version.
+    # VMS = (coin -> choc -> VMS)
+    return prefix('coin', prefix('choc', vms)) (x)
 assert vms == vms('coin')('choc')('coin')('choc')
 
 def is_trace(M, events):
+    """Show that M will consume all the events without error."""
     past = []
     try:
         for e in events:
@@ -127,8 +126,18 @@ def is_trace(M, events):
         return False
     else:
         return True
+assert is_trace(vms, ['coin'])
+assert is_trace(vms, ['coin','choc'])
+assert is_trace(vms, ['coin','choc','coin','choc'])
+assert not is_trace(vms, ['choc'])
 
 def grcust(x):
+    """
+    Greedy Customer will happily take a treat without paying, but if
+    forced to pay, he will always take a chocolate.
+    
+    GRCUST = (toffee -> GRCUST | choc -> GRCUST | coin -> choc -> GRCUST)
+    """
     return choice3(
         'toffee', grcust,
         'choc', grcust,
@@ -139,12 +148,15 @@ assert grcust('choc') == grcust
 assert grcust('coin')('choc') == grcust
 
 def vmct(x):
+    """ VMTC = (coin -> (choc -> VMCT | toffee -> VMCT)) """
     return prefix('coin', choice2('choc', vmct, 'toffee', vmct))(x)
 
 assert vmct('coin')('choc') == vmct
 assert vmct('coin')('toffee') == vmct
 
 def intersect(P, Q):
+    """Run P and Q. The have the same alphabets, so they always
+    process each event together."""
     return lambda z: intersect(P(z), Q(z))
 
 assert intersect(grcust, vmct)('coin')('choc')
@@ -152,23 +164,28 @@ assert intersect(grcust, vmct)('coin')('choc')('coin')('choc')
 # ? assert not sandbox(intersect(grcust, vmct)('toffee'))
 # intersect(grcust, vmct)('coin')('toffee')
 
-def concurrent(P, A, Q, B):
+def concurrent2(P, A, Q, B):
+    """ (P || Q) 
+    If the alphabets of P and Q share an event, the two processes
+    must process it together. This is how processes
+    synchronize. Unshared events are only seen by the owning process.
+    """
     def f(x):
         if x in A and x in B:
-            return concurrent(P(x), A, Q(x), B)
-        elif x in A:
-            return concurrent(P(x), A, Q, B)
-        elif x in B:
-            return concurrent(P, A, Q(x), B)
-        else:
-            raise Boom()
+            return concurrent2(P(x), A, Q(x), B)
+        if x in A:
+            return concurrent2(P(x), A, Q, B)
+        if x in B:
+            return concurrent2(P, A, Q(x), B)
+        raise Boom()
     return f
 
 A = ['coin','choc','toffee']
-concurrent(grcust, A, vmct, A)('coin')('choc')
+concurrent2(grcust, A, vmct, A)('coin')('choc')
 
 noisyvm_a = ['coin','clink','choc','clunk']
 def noisyvm(x):
+    # Noisy Vending Machine
     return prefix('coin',
                   prefix('clink', 
                          prefix('choc', 
@@ -176,18 +193,26 @@ def noisyvm(x):
 
 cust_a = ['coin','toffee','curse','choc'] 
 def cust(x):
+    # Customer that prefers toffee.
     return prefix('coin',
                   choice2('toffee', cust,
                           'curse', prefix('choc', cust))) (x)
 
-nc = concurrent(noisyvm, noisyvm_a, cust, cust_a)
+# Overlapping alphabets
+nc = concurrent2(noisyvm, noisyvm_a, cust, cust_a)
 assert is_trace(nc, ['coin','clink','curse','choc','clunk','coin'])
 assert is_trace(nc, ['coin','curse','clink','choc','clunk','coin'])
 assert not is_trace(nc, ['coin','clink','choc','clunk'])
 assert not is_trace(nc, ['coin','clink','toffee','coin'])
 
 def menu(a, P):
-    """Discover the alphabet of P by trial."""
+    """Discover the alphabet of P by trial. This procedure is in the
+    book, but I don't need it here."""
+    def nil(m): return m == []
+    def car(m): return m[0]
+    def cdr(m): return m[1:]
+    def cons(h,t): return [h] + t
+    
     if nil(a):
         return []
     else:
@@ -197,21 +222,17 @@ def menu(a, P):
             return menu(cdr(a), P)
         else:
             return cons(car(a),menu(cdr(a), P))
-
 assert menu(['choc', 'a', 'b', 'coin', 'c'], vms) == ['coin']
 
-assert is_trace(vms, ['coin'])
-assert is_trace(vms, ['coin','choc'])
-assert is_trace(vms, ['coin','choc','coin','choc'])
-assert not is_trace(vms, ['choc'])
-
 def SKIP(x):
+    # TBD
     if x == '_':
         pass
     else:
         raise Boom()
 
 def concurrent3(P, A, Q, B, R, C):
+    """Like concurrent2(), but for three processes."""
     def f(x):
         if x in A and x in B and x in C:
             return concurrent3(P(x), A, Q(x), B, R(x), C)
@@ -253,6 +274,8 @@ def screen_loop(x):
 system = concurrent3(player_loop, player_loop_a,
                      dealer_loop, dealer_loop_a,
                      screen_loop, screen_loop_a)
+
+# Notice how screen indirectly synchronizes player and dealer. 
 
 assert is_trace(system, ['close-screen', 'learned'])
 assert is_trace(system, [
