@@ -235,3 +235,15 @@ assert is_trace(dealer_loop, ['show-q', 'show-a', 'score-no',
                               'show-q', 'show-a', 'score-yes',
                               'learned'])
 
+screen_loop_a = ['open-screen', 'start', 'show-q', 'view-q', 
+                 'show-a', 'view-a', 'learned', 'close-screen']
+
+def screen_loop(x):
+    return choice3('show-q', prefix('view-q', screen_loop),
+                   'show-a', prefix('view-a', screen_loop),
+                   'close-screen', prefix('learned', SKIP)
+    ) (x)
+
+assert is_trace(screen_loop, ['close-screen', 'learned'])
+assert is_trace(screen_loop, ['show-q','view-q','close-screen', 'learned'])
+assert is_trace(screen_loop, ['show-a','view-a','close-screen', 'learned'])
