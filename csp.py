@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 
 """
-Communicating Sequential Processes (CSP)
+Many of these examples come from C.A.R Hoare's book:
+
+  Communicating Sequential Processes
+  Prentice-Hall International
+  1985
 """
 
 class Boom(Exception):
-    # Hoare had broken machines returning 'BLEEP'
+    # Hoare had broken machines returning the symbol BLEEP. I am
+    # more dramatic.
     pass
 
 def sandbox(f, *a):
@@ -20,13 +25,22 @@ def STOP(event):
     raise Boom()
 
 def simple(event):
-    """Accept a single coin and then breakdown."""
+    """
+    Accept a single coin and then breakdown.
+    SIMPLE = (coin -> STOP)
+    """
     if event == 'coin':
         return STOP
     else:
         raise Boom()
 
 assert sandbox(simple, 'coin')
+try:
+    simple('coin')('coin')
+except Boom:
+    assert True # the STOP process will not accept a coin.
+else:
+    assert False
 assert not sandbox(simple, 'slug')
 
 def prefix(c, P):
@@ -100,7 +114,7 @@ assert vms == vms('coin')('choc')('coin')('choc')
 
 del vms
 def vms(x):
-    # Second version: substitute prefix() application for vms1().
+    # Second version: substitute application of prefix for vms1().
     if x == 'coin':
         return prefix('choc', vms)
     else:
@@ -133,7 +147,7 @@ assert not is_trace(vms, ['choc'])
 
 def grcust(x):
     """
-    Greedy Customer will happily take a treat without paying, but if
+    Greedy Customer will happily take a treat without paying but if
     forced to pay, he will always take a chocolate.
     
     GRCUST = (toffee -> GRCUST | choc -> GRCUST | coin -> choc -> GRCUST)
@@ -167,7 +181,7 @@ assert intersect(grcust, vmct)('coin')('choc')('coin')('choc')
 def concurrent2(P, A, Q, B):
     """ (P || Q) 
     If the alphabets of P and Q share an event, the two processes
-    must process it together. This is how processes
+    must act on it together. This is how processes
     synchronize. Unshared events are only seen by the owning process.
     """
     def f(x):
@@ -185,7 +199,10 @@ concurrent2(grcust, A, vmct, A)('coin')('choc')
 
 noisyvm_a = ['coin','clink','choc','clunk']
 def noisyvm(x):
-    # Noisy Vending Machine
+    """
+    Noisy Vending Machine
+    NOISYVM = (coin -> clink -> choc -> clunk -> NOISYVM)
+    """
     return prefix('coin',
                   prefix('clink', 
                          prefix('choc', 
@@ -193,7 +210,12 @@ def noisyvm(x):
 
 cust_a = ['coin','toffee','curse','choc'] 
 def cust(x):
-    # Customer that prefers toffee.
+    """
+    A customer that prefers toffee, but will grudgingly accept a
+    chocolate.
+    
+    CUST = (coin -> (toffee -> CUST | curse -> choc -> CUST))
+    """
     return prefix('coin',
                   choice2('toffee', cust,
                           'curse', prefix('choc', cust))) (x)
@@ -232,7 +254,10 @@ def SKIP(x):
         raise Boom()
 
 def concurrent3(P, A, Q, B, R, C):
-    """Like concurrent2(), but for three processes."""
+    """
+    Like concurrent2(), but for three processes.
+    (P || Q || R)
+    """
     def f(x):
         if x in A and x in B and x in C:
             return concurrent3(P(x), A, Q(x), B, R(x), C)
