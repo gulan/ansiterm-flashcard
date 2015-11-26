@@ -211,17 +211,30 @@ def SKIP(x):
     else:
         raise Boom()
 
+def concurrent3(P, A, Q, B, R, C):
+    def f(x):
+        if x in A and x in B and x in C:
+            return concurrent3(P(x), A, Q(x), B, R(x), C)
+        if x in A and x in B:
+            return concurrent3(P(x), A, Q(x), B, R, C)
+        if x in A and x in C:
+            return concurrent3(P(x), A, Q, B, R(x), C)
+        if x in B and x in C:
+            return concurrent3(P, A, Q(x), B, R(x), C)
+        if x in A:
+            return concurrent3(P(x), A, Q, B, R, C)
+        if x in B:
+            return concurrent3(P, A, Q, B(x), R, C)
+        if x in C:
+            return concurrent3(P, A, Q, B, R(x), C)
+        raise Boom()
+    return f
+
 player_loop_a = ['view-q', 'view-a', 'learned', 'score-yes', 'score-no']
 def player_loop(x):
     return choice2('view-q', prefix('view-a', choice2('score-yes', player_loop,
                                                       'score-no', player_loop)),
                    'learned', SKIP) (x)
-
-assert is_trace(player_loop, ['learned'])
-assert is_trace(player_loop, ['view-q', 'view-a', 'score-yes', 'learned'])
-assert is_trace(player_loop, ['view-q', 'view-a', 'score-no',
-                              'view-q', 'view-a', 'score-yes',
-                              'learned'])
 
 dealer_loop_a = ['show-q', 'show-a', 'learned', 'score-yes', 'score-no']
 def dealer_loop(x):
@@ -229,21 +242,43 @@ def dealer_loop(x):
                                                       'score-no', dealer_loop)),
                    'learned', SKIP) (x)
 
-assert is_trace(dealer_loop, ['learned'])
-assert is_trace(dealer_loop, ['show-q', 'show-a', 'score-yes', 'learned'])
-assert is_trace(dealer_loop, ['show-q', 'show-a', 'score-no',
-                              'show-q', 'show-a', 'score-yes',
-                              'learned'])
-
 screen_loop_a = ['open-screen', 'start', 'show-q', 'view-q', 
                  'show-a', 'view-a', 'learned', 'close-screen']
-
 def screen_loop(x):
     return choice3('show-q', prefix('view-q', screen_loop),
                    'show-a', prefix('view-a', screen_loop),
                    'close-screen', prefix('learned', SKIP)
     ) (x)
 
-assert is_trace(screen_loop, ['close-screen', 'learned'])
-assert is_trace(screen_loop, ['show-q','view-q','close-screen', 'learned'])
-assert is_trace(screen_loop, ['show-a','view-a','close-screen', 'learned'])
+system = concurrent3(player_loop, player_loop_a,
+                     dealer_loop, dealer_loop_a,
+                     screen_loop, screen_loop_a)
+
+assert is_trace(system, ['close-screen', 'learned'])
+assert is_trace(system, [
+    'show-q','view-q',
+    'show-a','view-a','score-yes',
+    'close-screen','learned'])
+assert is_trace(system, [
+    'show-q','view-q',
+    'show-a','view-a','score-no',
+    'show-q','view-q',
+    'show-a','view-a','score-yes',
+    'close-screen','learned'])
+
+assert is_trace(player_loop, ['learned'])
+assert is_trace(player_loop, ['view-q', 'view-a', 'score-yes', 'learned'])
+assert is_trace(player_loop, ['view-q', 'view-a', 'score-no',
+                              'view-q', 'view-a', 'score-yes',
+                              'learned'])
+
+assert is_trace(dealer_loop, ['learned'])
+assert is_trace(dealer_loop, ['show-q', 'show-a', 'score-yes', 'learned'])
+assert is_trace(dealer_loop, ['show-q', 'show-a', 'score-no',
+                              'show-q', 'show-a', 'score-yes',
+                              'learned'])
+
+assert is_trace(screen_loop, ['close-screen','learned'])
+assert is_trace(screen_loop, ['show-q','view-q','close-screen','learned'])
+assert is_trace(screen_loop, ['show-a','view-a','close-screen','learned'])
+
