@@ -184,15 +184,18 @@ def concurrent2(P, A, Q, B):
     must act on it together. This is how processes
     synchronize. Unshared events are only seen by the owning process.
     """
-    def f(x):
-        if x in A and x in B:
-            return concurrent2(P(x), A, Q(x), B)
-        if x in A:
-            return concurrent2(P(x), A, Q, B)
-        if x in B:
-            return concurrent2(P, A, Q(x), B)
-        raise Boom()
-    return f
+    def aux(P, Q):
+        # The alphabets never change.
+        def f(x):
+            if x in A and x in B:
+                return aux(P(x), Q(x))
+            if x in A:
+                return aux(P(x), Q)
+            if x in B:
+                return aux(P, Q(x))
+            raise Boom()
+        return f
+    return aux(P, Q)
 
 A = ['coin','choc','toffee']
 concurrent2(grcust, A, vmct, A)('coin')('choc')
@@ -258,23 +261,26 @@ def concurrent3(P, A, Q, B, R, C):
     Like concurrent2(), but for three processes.
     (P || Q || R)
     """
-    def f(x):
-        if x in A and x in B and x in C:
-            return concurrent3(P(x), A, Q(x), B, R(x), C)
-        if x in A and x in B:
-            return concurrent3(P(x), A, Q(x), B, R, C)
-        if x in A and x in C:
-            return concurrent3(P(x), A, Q, B, R(x), C)
-        if x in B and x in C:
-            return concurrent3(P, A, Q(x), B, R(x), C)
-        if x in A:
-            return concurrent3(P(x), A, Q, B, R, C)
-        if x in B:
-            return concurrent3(P, A, Q, B(x), R, C)
-        if x in C:
-            return concurrent3(P, A, Q, B, R(x), C)
-        raise Boom()
-    return f
+    def aux(P, Q, R):
+        # The alphabets never change.
+        def f(x):
+            if x in A and x in B and x in C:
+                return aux(P(x), Q(x), R(x))
+            if x in A and x in B:
+                return aux(P(x), Q(x), R)
+            if x in A and x in C:
+                return aux(P(x), Q, R(x))
+            if x in B and x in C:
+                return aux(P, Q(x), R(x))
+            if x in A:
+                return aux(P(x), Q, R)
+            if x in B:
+                return aux(P, Q(x), R)
+            if x in C:
+                return aux(P, Q, R(x))
+            raise Boom()
+        return f
+    return aux(P, Q, R)
 
 player_loop_a = ['view-q', 'view-a', 'learned', 'score-yes', 'score-no']
 def player_loop(x):
